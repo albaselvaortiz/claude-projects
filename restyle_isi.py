@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Restyle ESG Ready Módulo 2 presentation with ISI (Institute for Sustainable Innovation) branding.
+Restyle ESG Ready Módulo 2 presentation with ISI branding.
 
-Transformations:
-  - Typography: All text → Syne family (ExtraBold, Bold, SemiBold, Regular)
-  - Corner rounding: All rectangular shapes and images get rounded corners
-  - Color palette: Only #FFFFFF, #2A3EF4, #150047, #95EBDA, #FF2990
-  - Logo: ISI logo on every slide (color variant based on background)
+Changes v2:
+  - Typography: Syne Bold (no ExtraBold), SemiBold, Medium, Regular
+  - Corner rounding: increased radius (8%)
+  - More blue #2A3EF4: footer bars, callout boxes, accent bars on light slides
+  - Vector watermark: ISI logo at ~15% opacity on dark cover/section slides
+  - Fix slide 24 overlapping elements
   - Google Slides compatible (no transitions/animations)
 """
 
@@ -23,51 +24,53 @@ WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 BLUE = RGBColor(0x2A, 0x3E, 0xF4)
 DARK_NAVY = RGBColor(0x15, 0x00, 0x47)
 MINT = RGBColor(0x95, 0xEB, 0xDA)
-ERROR_PINK = RGBColor(0xFF, 0x29, 0x90)
 
-# ── Color Mapping (old → new) ─────────────────────────────────
-# Map existing colors to ISI palette
+# ── Color Mapping ──────────────────────────────────────────────
 COLOR_MAP = {
-    # Dark backgrounds/text
-    (0x15, 0x10, 0x50): DARK_NAVY,      # #151050 → #150047
-    (0x1E, 0x29, 0x3B): DARK_NAVY,      # #1E293B → #150047
-    (0x33, 0x41, 0x55): DARK_NAVY,      # #334155 → #150047
-
-    # Accent teal/mint colors
-    (0x5C, 0xE0, 0xD2): MINT,           # #5CE0D2 → #95EBDA
-    (0x00, 0xB4, 0xA0): MINT,           # #00B4A0 → #95EBDA
-
-    # Grays → context-dependent (subtitle gray → lighter treatment)
-    (0x94, 0xA3, 0xB8): MINT,           # #94A3B8 subtitle gray → mint on dark, dark on light
-
-    # White stays white
+    (0x15, 0x10, 0x50): DARK_NAVY,
+    (0x1E, 0x29, 0x3B): DARK_NAVY,
+    (0x33, 0x41, 0x55): DARK_NAVY,
+    (0x5C, 0xE0, 0xD2): MINT,
+    (0x00, 0xB4, 0xA0): MINT,
+    (0x94, 0xA3, 0xB8): MINT,
     (0xFF, 0xFF, 0xFF): WHITE,
-
-    # Light background
-    (0xF5, 0xF7, 0xFA): WHITE,          # #F5F7FA → #FFFFFF
+    (0xF5, 0xF7, 0xFA): WHITE,
 }
 
-# For shapes with solid fills (decorative elements)
-FILL_COLOR_MAP = {
+# Fill mapping for shapes on LIGHT background slides → use more BLUE
+FILL_COLOR_MAP_LIGHT = {
+    (0x15, 0x10, 0x50): BLUE,       # dark fills → BLUE (footer, callouts, highlights)
+    (0x5C, 0xE0, 0xD2): BLUE,       # teal accent bars → BLUE
+    (0x00, 0xB4, 0xA0): BLUE,       # green accents → BLUE
+    (0xF5, 0xF7, 0xFA): WHITE,
+    (0x33, 0x41, 0x55): BLUE,
+    (0x1E, 0x29, 0x3B): BLUE,
+    (0x94, 0xA3, 0xB8): BLUE,
+}
+
+# Fill mapping for shapes on DARK background slides → keep navy/mint
+FILL_COLOR_MAP_DARK = {
     (0x15, 0x10, 0x50): DARK_NAVY,
     (0x5C, 0xE0, 0xD2): MINT,
     (0x00, 0xB4, 0xA0): MINT,
     (0xF5, 0xF7, 0xFA): WHITE,
     (0x33, 0x41, 0x55): DARK_NAVY,
     (0x1E, 0x29, 0x3B): DARK_NAVY,
-    (0x94, 0xA3, 0xB8): BLUE,           # gray decorative → blue
+    (0x94, 0xA3, 0xB8): BLUE,
 }
 
-# Corner rounding radius (fraction of shorter side)
-CORNER_RADIUS = 0.04
+# Corner rounding radius — increased to 8%
+CORNER_RADIUS = 0.08
 
 # Logo dimensions
-LOGO_WIDTH = Emu(1097280)   # ~1.2 inches
-LOGO_HEIGHT = Emu(274320)   # ~0.3 inches (aspect ratio of the logo)
+LOGO_WIDTH = Emu(1097280)
+LOGO_HEIGHT = Emu(274320)
+LOGO_LEFT = Emu(457200)
+LOGO_BOTTOM_MARGIN = Emu(274320)
 
-# Logo position: bottom-left, consistent with ISI dossier reference
-LOGO_LEFT = Emu(457200)     # ~0.5 inches from left
-LOGO_BOTTOM_MARGIN = Emu(274320)  # ~0.3 inches from bottom
+# Watermark dimensions (large, bottom-right)
+WATERMARK_SIZE = Emu(2743200)   # ~3 inches
+WATERMARK_OPACITY = 15          # 15% opacity
 
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -79,23 +82,19 @@ LOGO_WHITE = os.path.join(SCRIPT_DIR, "logo_isi_WHITE.png")
 
 
 def rgb_tuple(color):
-    """Extract (r, g, b) tuple from an RGBColor."""
     if color is None:
         return None
     return (color[0], color[1], color[2])
 
 
 def map_text_color(old_rgb, is_dark_bg):
-    """Map a text color to the ISI palette, considering background."""
     if old_rgb is None:
         return None
     t = rgb_tuple(old_rgb)
-    # Subtitle gray gets special treatment based on background
     if t == (0x94, 0xA3, 0xB8):
         return MINT if is_dark_bg else DARK_NAVY
     if t in COLOR_MAP:
         return COLOR_MAP[t]
-    # Fallback: if it's a light color on dark bg, keep white; if dark color on light bg, use navy
     brightness = (t[0] * 299 + t[1] * 587 + t[2] * 114) / 1000
     if is_dark_bg:
         return WHITE if brightness > 128 else MINT
@@ -103,14 +102,13 @@ def map_text_color(old_rgb, is_dark_bg):
         return DARK_NAVY if brightness < 128 else WHITE
 
 
-def map_fill_color(old_rgb):
-    """Map a fill color to the ISI palette."""
+def map_fill_color(old_rgb, is_dark_bg):
     if old_rgb is None:
         return None
     t = rgb_tuple(old_rgb)
-    if t in FILL_COLOR_MAP:
-        return FILL_COLOR_MAP[t]
-    # Fallback by brightness
+    fill_map = FILL_COLOR_MAP_DARK if is_dark_bg else FILL_COLOR_MAP_LIGHT
+    if t in fill_map:
+        return fill_map[t]
     brightness = (t[0] * 299 + t[1] * 587 + t[2] * 114) / 1000
     if brightness > 200:
         return WHITE
@@ -121,40 +119,38 @@ def map_fill_color(old_rgb):
 
 
 def get_slide_bg_color(slide):
-    """Determine the background color of a slide."""
     try:
         bg = slide.background
         fill = bg.fill
-        if fill.type is not None and fill.type == 1:  # SOLID
+        if fill.type is not None and fill.type == 1:
             return rgb_tuple(fill.fore_color.rgb)
     except Exception:
         pass
-    return (0xFF, 0xFF, 0xFF)  # default white
+    return (0xFF, 0xFF, 0xFF)
 
 
 def is_dark_background(bg_tuple):
-    """Check if a background color is dark."""
     brightness = (bg_tuple[0] * 299 + bg_tuple[1] * 587 + bg_tuple[2] * 114) / 1000
     return brightness < 128
 
 
 def get_font_name_for_role(original_font, original_bold, original_size):
-    """Determine the Syne variant based on the original font role."""
+    """Syne Bold (no ExtraBold) for titles, SemiBold for subtitles, etc."""
     size_pt = original_size / 12700 if original_size else 14
 
-    # Arial Black → big titles, numbers → Syne ExtraBold
+    # Arial Black → was ExtraBold, now just Bold
     if original_font and "arial black" in original_font.lower():
-        return "Syne ExtraBold", False  # (font_name, bold_flag)
+        return "Syne Bold", False
 
-    # Large bold text (titles) → Syne Bold
+    # Large bold text (titles)
     if original_bold and size_pt >= 20:
         return "Syne Bold", False
 
-    # Medium bold text (subtitles, labels) → Syne SemiBold
+    # Medium bold text (subtitles, labels)
     if original_bold and size_pt >= 14:
         return "Syne SemiBold", False
 
-    # Small bold text → Syne Medium
+    # Small bold text
     if original_bold:
         return "Syne Medium", False
 
@@ -163,35 +159,24 @@ def get_font_name_for_role(original_font, original_bold, original_size):
 
 
 def restyle_run(run, is_dark_bg):
-    """Apply ISI font and color to a single text run."""
     font = run.font
     original_font = font.name
     original_bold = font.bold
     original_size = font.size
 
-    # Determine Syne variant
     font_name, bold = get_font_name_for_role(original_font, original_bold, original_size)
     font.name = font_name
     font.bold = bold
 
-    # Also set East Asian and Complex Script fonts to Syne
     rPr = run._r.get_or_add_rPr()
-    # Set a:ea (East Asian) font
-    ea = rPr.find(qn('a:ea'))
-    if ea is not None:
-        ea.set('typeface', font_name)
-    else:
-        ea = rPr.makeelement(qn('a:ea'), {'typeface': font_name})
-        rPr.append(ea)
-    # Set a:cs (Complex Script) font
-    cs = rPr.find(qn('a:cs'))
-    if cs is not None:
-        cs.set('typeface', font_name)
-    else:
-        cs = rPr.makeelement(qn('a:cs'), {'typeface': font_name})
-        rPr.append(cs)
+    for tag in ('a:ea', 'a:cs'):
+        el = rPr.find(qn(tag))
+        if el is not None:
+            el.set('typeface', font_name)
+        else:
+            el = rPr.makeelement(qn(tag), {'typeface': font_name})
+            rPr.append(el)
 
-    # Map color
     try:
         if font.color and font.color.rgb:
             new_color = map_text_color(font.color.rgb, is_dark_bg)
@@ -202,48 +187,22 @@ def restyle_run(run, is_dark_bg):
 
 
 def restyle_text_frame(text_frame, is_dark_bg):
-    """Apply ISI styling to all text in a text frame."""
     for para in text_frame.paragraphs:
         for run in para.runs:
             restyle_run(run, is_dark_bg)
 
 
 def round_freeform_corners(shape):
-    """
-    For freeform shapes that act as rectangles/cards,
-    try to convert them to rounded rectangles via XML manipulation.
-    Only apply if shape is roughly rectangular.
-    """
     sp = shape._element
-    # Check if it's a large enough shape to benefit from rounding
-    w = shape.width
-    h = shape.height
-    if w < Emu(200000) or h < Emu(200000):
-        return  # Too small (decorative lines/bars)
-
-    # For thin bars (aspect ratio > 10:1 or < 1:10), skip rounding
-    if w > 0 and h > 0:
-        ratio = max(w / h, h / w)
-        if ratio > 8:
-            return  # It's a bar/line, not a card
-
-    # For freeform shapes, we can't easily convert to roundRect
-    # since they have custom geometry. Instead, we'll leave them as-is
-    # if they're genuinely freeform. But many "freeform" shapes from
-    # Google Slides are actually just rectangles with custom paths.
-    # We'll handle this at the XML level.
     spPr = sp.find(qn('p:spPr'))
     if spPr is None:
         return
-
     custGeom = spPr.find(qn('a:custGeom'))
     if custGeom is not None:
-        # Replace custom geometry with preset rounded rectangle
         prstGeom = spPr.makeelement(qn('a:prstGeom'), {'prst': 'roundRect'})
         avLst = prstGeom.makeelement(qn('a:avLst'), {})
         gd = avLst.makeelement(qn('a:gd'), {
-            'name': 'adj',
-            'fmla': f'val {int(CORNER_RADIUS * 100000)}'
+            'name': 'adj', 'fmla': f'val {int(CORNER_RADIUS * 100000)}'
         })
         avLst.append(gd)
         prstGeom.append(avLst)
@@ -251,53 +210,42 @@ def round_freeform_corners(shape):
 
 
 def round_autoshape_corners(shape):
-    """Round corners of an AutoShape."""
     sp = shape._element
     spPr = sp.find(qn('p:spPr'))
     if spPr is None:
         return
-
     prstGeom = spPr.find(qn('a:prstGeom'))
     if prstGeom is None:
         return
-
     prst = prstGeom.get('prst')
     if prst in ('rect', 'roundRect'):
         prstGeom.set('prst', 'roundRect')
-        # Set adjustment value
         avLst = prstGeom.find(qn('a:avLst'))
         if avLst is None:
             avLst = prstGeom.makeelement(qn('a:avLst'), {})
             prstGeom.append(avLst)
-        # Clear existing adjustments
         for gd in avLst.findall(qn('a:gd')):
             avLst.remove(gd)
         gd = avLst.makeelement(qn('a:gd'), {
-            'name': 'adj',
-            'fmla': f'val {int(CORNER_RADIUS * 100000)}'
+            'name': 'adj', 'fmla': f'val {int(CORNER_RADIUS * 100000)}'
         })
         avLst.append(gd)
 
 
 def round_picture_corners(shape):
-    """Round corners of a picture by changing its geometry mask."""
     sp = shape._element
     spPr = sp.find(qn('p:spPr'))
     if spPr is None:
         return
-
     prstGeom = spPr.find(qn('a:prstGeom'))
     if prstGeom is None:
-        # Create prstGeom for the picture
         prstGeom = spPr.makeelement(qn('a:prstGeom'), {'prst': 'roundRect'})
         avLst = prstGeom.makeelement(qn('a:avLst'), {})
         gd = avLst.makeelement(qn('a:gd'), {
-            'name': 'adj',
-            'fmla': f'val {int(CORNER_RADIUS * 100000)}'
+            'name': 'adj', 'fmla': f'val {int(CORNER_RADIUS * 100000)}'
         })
         avLst.append(gd)
         prstGeom.append(avLst)
-        # Insert after xfrm if present, or as first child
         xfrm = spPr.find(qn('a:xfrm'))
         if xfrm is not None:
             xfrm.addnext(prstGeom)
@@ -312,34 +260,17 @@ def round_picture_corners(shape):
         for gd in avLst.findall(qn('a:gd')):
             avLst.remove(gd)
         gd = avLst.makeelement(qn('a:gd'), {
-            'name': 'adj',
-            'fmla': f'val {int(CORNER_RADIUS * 100000)}'
+            'name': 'adj', 'fmla': f'val {int(CORNER_RADIUS * 100000)}'
         })
         avLst.append(gd)
 
 
-def recolor_solid_fill(element, new_color):
-    """Set a solid fill color on an XML element's solidFill."""
-    solidFill = element.find(qn('a:solidFill'))
-    if solidFill is not None:
-        # Remove existing color children
-        for child in list(solidFill):
-            solidFill.remove(child)
-        srgb = solidFill.makeelement(qn('a:srgbClr'), {
-            'val': f'{new_color[0]:02X}{new_color[1]:02X}{new_color[2]:02X}'
-        })
-        solidFill.append(srgb)
-        return True
-    return False
-
-
 def recolor_shape_fill(shape, is_dark_bg):
-    """Recolor the fill of a shape to ISI palette."""
     try:
         fill = shape.fill
         if fill.type == 1:  # SOLID
             old_rgb = fill.fore_color.rgb
-            new_color = map_fill_color(old_rgb)
+            new_color = map_fill_color(old_rgb, is_dark_bg)
             if new_color:
                 fill.fore_color.rgb = new_color
     except Exception:
@@ -347,12 +278,10 @@ def recolor_shape_fill(shape, is_dark_bg):
 
 
 def recolor_freeform_fill(shape, is_dark_bg):
-    """Recolor freeform shapes via XML."""
     sp = shape._element
     spPr = sp.find(qn('p:spPr'))
     if spPr is None:
         return
-
     solidFill = spPr.find(qn('a:solidFill'))
     if solidFill is not None:
         srgb = solidFill.find(qn('a:srgbClr'))
@@ -360,18 +289,16 @@ def recolor_freeform_fill(shape, is_dark_bg):
             val = srgb.get('val')
             if val:
                 r, g, b = int(val[0:2], 16), int(val[2:4], 16), int(val[4:6], 16)
-                new_color = map_fill_color(RGBColor(r, g, b))
+                new_color = map_fill_color(RGBColor(r, g, b), is_dark_bg)
                 if new_color:
                     srgb.set('val', f'{new_color[0]:02X}{new_color[1]:02X}{new_color[2]:02X}')
 
 
 def recolor_line(shape):
-    """Recolor shape border/line if present."""
     sp = shape._element
     spPr = sp.find(qn('p:spPr'))
     if spPr is None:
         return
-
     ln = spPr.find(qn('a:ln'))
     if ln is not None:
         solidFill = ln.find(qn('a:solidFill'))
@@ -381,65 +308,43 @@ def recolor_line(shape):
                 val = srgb.get('val')
                 if val:
                     r, g, b = int(val[0:2], 16), int(val[2:4], 16), int(val[4:6], 16)
-                    new_color = map_fill_color(RGBColor(r, g, b))
+                    new_color = map_fill_color(RGBColor(r, g, b), False)
                     if new_color:
                         srgb.set('val', f'{new_color[0]:02X}{new_color[1]:02X}{new_color[2]:02X}')
 
 
 def is_decorative_freeform(shape, slide_width, slide_height):
-    """
-    Detect if a freeform is a decorative/brand element (circles, abstract shapes)
-    vs a content card/container that should get rounded corners.
-
-    Decorative indicators:
-    - Partially off-screen (negative position or extends beyond slide)
-    - Very large relative to slide (>40% of slide in both dimensions)
-    - Nearly circular (aspect ratio ~1:1 and large)
-    - On the top edge spanning full width (top bar)
-    """
     left = shape.left
     top = shape.top
     w = shape.width
     h = shape.height
 
-    # Off-screen: negative position or extends beyond slide
     if left < 0 or top < 0:
         return True
-    if left + w > slide_width + Emu(50000):  # small tolerance
+    if left + w > slide_width + Emu(50000):
         return True
     if top + h > slide_height + Emu(50000):
         return True
-
-    # Very large shapes (>40% of slide in both dims) are usually decorative
     if w > slide_width * 0.4 and h > slide_height * 0.4:
         return True
-
-    # Nearly circular and large → decorative (e.g., the leaf, circles)
     if w > 0 and h > 0:
         aspect = max(w / h, h / w)
-        if aspect < 1.3 and min(w, h) > Emu(900000):  # ~1 inch, nearly square
+        if aspect < 1.3 and min(w, h) > Emu(900000):
             return True
-
-    # Full-width top bar
     if w > slide_width * 0.9 and h < Emu(100000):
         return True
-
     return False
 
 
 def should_round_shape(shape, slide_width=None, slide_height=None):
-    """Determine if a shape should get rounded corners."""
     w = shape.width
     h = shape.height
-    # Skip very small shapes
     if w < Emu(200000) or h < Emu(200000):
         return False
-    # Skip thin bars (aspect ratio > 8:1)
     if w > 0 and h > 0:
         ratio = max(w / h, h / w)
         if ratio > 8:
             return False
-    # For freeforms, check if it's a decorative element
     if shape.shape_type == MSO_SHAPE_TYPE.FREEFORM and slide_width and slide_height:
         if is_decorative_freeform(shape, slide_width, slide_height):
             return False
@@ -447,40 +352,31 @@ def should_round_shape(shape, slide_width=None, slide_height=None):
 
 
 def process_shape(shape, is_dark_bg, slide_width, slide_height):
-    """Process a single shape: restyle text, round corners, recolor."""
     st = shape.shape_type
 
-    # ── Text restyling ──
     if shape.has_text_frame:
         restyle_text_frame(shape.text_frame, is_dark_bg)
 
-    # ── Corner rounding ──
     if st == MSO_SHAPE_TYPE.AUTO_SHAPE and should_round_shape(shape, slide_width, slide_height):
         round_autoshape_corners(shape)
-
     if st == MSO_SHAPE_TYPE.PICTURE and should_round_shape(shape, slide_width, slide_height):
         round_picture_corners(shape)
-
     if st == MSO_SHAPE_TYPE.FREEFORM and should_round_shape(shape, slide_width, slide_height):
         round_freeform_corners(shape)
 
-    # ── Fill recoloring ──
     if st == MSO_SHAPE_TYPE.FREEFORM:
         recolor_freeform_fill(shape, is_dark_bg)
     elif st in (MSO_SHAPE_TYPE.AUTO_SHAPE, MSO_SHAPE_TYPE.TEXT_BOX):
         recolor_shape_fill(shape, is_dark_bg)
 
-    # ── Line/border recoloring ──
     recolor_line(shape)
 
-    # ── Recurse into groups ──
     if st == MSO_SHAPE_TYPE.GROUP:
         for child in shape.shapes:
             process_shape(child, is_dark_bg, slide_width, slide_height)
 
 
 def set_slide_background(slide, bg_color):
-    """Set slide background to a solid color."""
     bg = slide.background
     fill = bg.fill
     fill.solid()
@@ -488,32 +384,32 @@ def set_slide_background(slide, bg_color):
 
 
 def has_footer_bar(slide, slide_height):
-    """Check if slide has a dark footer bar at the bottom."""
     for shape in slide.shapes:
-        # Footer bars are typically full-width shapes near the bottom
         if shape.top + shape.height >= slide_height - Emu(50000):
-            if shape.width > Emu(8000000):  # nearly full width
-                if shape.height < Emu(600000):  # and relatively thin
-                    return True
+            if shape.width > Emu(8000000) and shape.height < Emu(600000):
+                return True
     return False
 
 
-def add_logo_to_slide(slide, prs, is_dark_bg):
-    """Add the appropriate ISI logo to the slide."""
-    # Choose logo variant based on background
+def add_logo_to_slide(slide, prs, is_dark_bg, slide_index=0):
     if is_dark_bg:
-        logo_path = LOGO_CLARO  # mint/turquoise on dark backgrounds
+        logo_path = LOGO_CLARO
     else:
-        logo_path = LOGO_BLACK  # black on light/white backgrounds
+        logo_path = LOGO_BLACK
 
     if not os.path.exists(logo_path):
-        print(f"  Warning: Logo not found at {logo_path}")
         return
 
-    # If the slide has a footer bar, place logo above it
     footer = has_footer_bar(slide, prs.slide_height)
+
+    # Slide 24 (index 23): place logo right of Doc card to avoid test bar overlap
+    if slide_index == 23:
+        logo_left = prs.slide_width - LOGO_WIDTH - Emu(457200)
+        logo_top = prs.slide_height - Emu(434340) - LOGO_HEIGHT - Emu(91440)
+        slide.shapes.add_picture(logo_path, logo_left, logo_top, LOGO_WIDTH, LOGO_HEIGHT)
+        return
+
     if footer and not is_dark_bg:
-        # Place above the footer bar (footer is ~434340 EMU high at the bottom)
         logo_top = prs.slide_height - Emu(434340) - LOGO_HEIGHT - Emu(91440)
     else:
         logo_top = prs.slide_height - LOGO_HEIGHT - LOGO_BOTTOM_MARGIN
@@ -521,33 +417,98 @@ def add_logo_to_slide(slide, prs, is_dark_bg):
     slide.shapes.add_picture(logo_path, LOGO_LEFT, logo_top, LOGO_WIDTH, LOGO_HEIGHT)
 
 
+def add_watermark(slide, prs):
+    """Add ISI logo as a large, low-opacity watermark on dark slides."""
+    logo_path = LOGO_WHITE
+    if not os.path.exists(logo_path):
+        return
+
+    wm_left = prs.slide_width - WATERMARK_SIZE - Emu(274320)
+    wm_top = prs.slide_height - WATERMARK_SIZE - Emu(274320)
+
+    pic = slide.shapes.add_picture(logo_path, wm_left, wm_top, WATERMARK_SIZE, WATERMARK_SIZE)
+
+    # Set opacity via XML: add alphaModFix to the blip
+    sp = pic._element
+    blipFill = sp.find(qn('p:blipFill'))
+    if blipFill is not None:
+        blip = blipFill.find(qn('a:blip'))
+        if blip is not None:
+            # alphaModFix: amt is in 1/1000 of percent (15% = 15000)
+            alpha = blip.makeelement(qn('a:alphaModFix'), {
+                'amt': str(WATERMARK_OPACITY * 1000)
+            })
+            blip.append(alpha)
+
+
+def fix_slide_24(slide):
+    """Fix overlapping elements on slide 24 (checklist slide)."""
+    # Row 3 (Documentación) overlaps with the Test bar in the original.
+    # Fix: compress row 2 and row 3, then reposition test bar clearly below.
+
+    SHIFT_R2 = Emu(80000)    # shift row 2 up
+    SHIFT_R3 = Emu(200000)   # shift row 3 up
+    SHRINK_R3 = Emu(250000)  # shrink row 3 card height
+    TEST_TOP = Emu(4160000)  # absolute position for test bar
+    TEST_H = Emu(400000)     # test bar height
+
+    for shape in slide.shapes:
+        t = shape.top
+
+        # Row 2 shapes (top ~2057400-2560000): shift up
+        if Emu(2000000) <= t < Emu(2700000):
+            shape.top = t - SHIFT_R2
+
+        # Row 3 shapes (top ~3200000-3800000): shift up + shrink card bgs
+        elif Emu(3200000) <= t < Emu(3800000):
+            shape.top = t - SHIFT_R3
+            if shape.height > Emu(800000):
+                shape.height = shape.height - SHRINK_R3
+
+        # Test bar shapes (top ~3931920): reposition
+        elif Emu(3900000) <= t < Emu(4200000):
+            shape.top = TEST_TOP
+            shape.height = TEST_H
+
+
+# ── Section divider slide indices (0-based) ──
+# These are the dark slides with "01", "02", etc.
+SECTION_DIVIDERS = {2, 5, 8, 11, 13, 15, 18, 20, 22}
+COVER_SLIDES = {0, 24}  # Title and closing slides
+
+
 def process_presentation():
-    """Main processing function."""
     print(f"Loading: {INPUT_FILE}")
     prs = Presentation(INPUT_FILE)
     print(f"Slides: {len(prs.slides)}")
-    print(f"Slide size: {prs.slide_width/914400:.2f}\" x {prs.slide_height/914400:.2f}\"")
 
     for i, slide in enumerate(prs.slides):
         bg_tuple = get_slide_bg_color(slide)
         is_dark_bg = is_dark_background(bg_tuple)
 
-        print(f"\nSlide {i+1}: bg={'dark' if is_dark_bg else 'light'} (#{bg_tuple[0]:02X}{bg_tuple[1]:02X}{bg_tuple[2]:02X})")
+        print(f"Slide {i+1}: bg={'dark' if is_dark_bg else 'light'}")
 
-        # ── Remap slide background ──
+        # Remap slide background
         if is_dark_bg:
             set_slide_background(slide, DARK_NAVY)
         else:
             set_slide_background(slide, WHITE)
 
-        # ── Process all shapes ──
+        # Process all shapes
         for shape in slide.shapes:
             process_shape(shape, is_dark_bg, prs.slide_width, prs.slide_height)
 
-        # ── Add logo ──
-        add_logo_to_slide(slide, prs, is_dark_bg)
+        # Fix slide 24 overlapping
+        if i == 23:
+            fix_slide_24(slide)
 
-    # ── Save output ──
+        # Add watermark on dark cover/section slides
+        if i in COVER_SLIDES or i in SECTION_DIVIDERS:
+            add_watermark(slide, prs)
+
+        # Add logo
+        add_logo_to_slide(slide, prs, is_dark_bg, slide_index=i)
+
     print(f"\nSaving: {OUTPUT_FILE}")
     prs.save(OUTPUT_FILE)
     print("Done!")
