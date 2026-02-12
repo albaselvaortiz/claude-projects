@@ -72,7 +72,7 @@ LOGO_BOTTOM_MARGIN = Emu(274320)  # ~0.3 inches from bottom
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_FILE = os.path.join(SCRIPT_DIR, "ESG_Ready_Modulo2_Presentacion.pptx")
-OUTPUT_FILE = os.path.join(SCRIPT_DIR, "ESG_Ready_Modulo2_ISI.pptx")
+OUTPUT_FILE = os.path.join(SCRIPT_DIR, "claude_ESG_Ready_Modulo2_ISI.pptx")
 LOGO_BLACK = os.path.join(SCRIPT_DIR, "LOGO ISI BLACK.png")
 LOGO_CLARO = os.path.join(SCRIPT_DIR, "LOGO ISI CLARO.png")
 LOGO_WHITE = os.path.join(SCRIPT_DIR, "logo_isi_WHITE.png")
